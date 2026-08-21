@@ -3,29 +3,24 @@ from textblob import TextBlob
 import pandas as pd
 from datetime import datetime
 
-BEARER_TOKEN = "PASTE_YOUR_TOKEN_HERE"
+import os
+BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "").strip()
 
-client = tweepy.Client(bearer_token=BEARER_TOKEN)
-
-search_term = "stocks"
+search_term = os.getenv("TWITTER_SEARCH_TERM", "stocks")
 tweets_amount = 20
 
 rows = []
 
 try:
-    response = client.search_recent_tweets(
-        query=search_term,
-        max_results=tweets_amount,
-        tweet_fields=["text"]
-    )
+    if not BEARER_TOKEN:
+        raise RuntimeError("TWITTER_BEARER_TOKEN is not configured")
+    response = client.search_recent_tweets(query=search_term, max_results=tweets_amount, tweet_fields=["text"])
+    if not response.data:
+        raise RuntimeError("No tweets returned")
+    tweets = [tweet.text for tweet in response.data]
 
-    if response.data:
-        tweets = [t.text for t in response.data]
-    else:
-        raise Exception("No tweets returned")
-
-except Exception as e:
-    print("Twitter API failed, using sample data")
+except (RuntimeError, tweepy.TweepyException) as error:
+    print(f"Twitter API unavailable ({error}), using sample data")
     tweets = [
         "Stock market is booming today!",
         "I lost money in stocks, very disappointing.",
